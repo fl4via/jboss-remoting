@@ -57,10 +57,12 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
     /**
      * The context manager for Remoting endpoints.
      */
-    ContextManager<Endpoint> ENDPOINT_CONTEXT_MANAGER = doPrivileged((PrivilegedAction<ContextManager<Endpoint>>) () -> {
-        final ContextManager<Endpoint> contextManager = new ContextManager<>(Endpoint.class, "jboss-remoting.endpoint");
-        contextManager.setGlobalDefaultSupplierIfNotSet(ConfigurationEndpointSupplier::new);
-        return contextManager;
+    ContextManager<Endpoint> ENDPOINT_CONTEXT_MANAGER = doPrivileged(new PrivilegedAction<ContextManager<Endpoint>>() {
+        public ContextManager<Endpoint> run() {
+            final ContextManager<Endpoint> contextManager = new ContextManager<>(Endpoint.class, "jboss-remoting.endpoint");
+            contextManager.setGlobalDefaultSupplierIfNotSet(ConfigurationEndpointSupplier::new);
+            return contextManager;
+        }
     });
 
     /**

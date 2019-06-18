@@ -132,8 +132,16 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
      * The name of this endpoint.
      */
     private final String name;
-    private final CloseHandler<Object> resourceCloseHandler = (closed, exception) -> closeTick1(closed);
-    private final CloseHandler<Connection> connectionCloseHandler = (closed, exception) -> connections.remove(closed);
+    private final CloseHandler<Object> resourceCloseHandler = new CloseHandler<Object>() {
+        public void handleClose(Object closed, IOException exception) {
+            closeTick1(closed);
+        }
+    };
+    private final CloseHandler<Connection> connectionCloseHandler = new CloseHandler<Connection>() {
+        public void handleClose(Connection closed, IOException exception) {
+            connections.remove(closed);
+        }
+    };
     private final boolean ourWorker;
 
     private final MBeanServer server;
@@ -246,10 +254,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 final AtomicReference<EndpointImpl> endpointRef = new AtomicReference<EndpointImpl>();
                 workerBuilder.setDaemon(true);
                 workerBuilder.setWorkerName(endpointName == null ? "Remoting (anonymous)" : "Remoting \"" + endpointName + "\"");
-                workerBuilder.setTerminationTask(() -> {
-                    final EndpointImpl e = endpointRef.getAndSet(null);
-                    if (e != null) {
-                        e.closeComplete();
+                workerBuilder.setTerminationTask(new Runnable() {
+                    public void run() {
+                        final EndpointImpl e = endpointRef.getAndSet(null);
+                        if (e != null) {
+                            e.closeComplete();
+                        }
                     }
                 });
                 xnioWorker = workerBuilder.build();
@@ -437,7 +447,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         };
         // automatically close the registration when the endpoint is closed
         final Key key = addCloseHandler(SpiUtils.closingCloseHandler(registration));
-        registration.addCloseHandler((closed, exception) -> key.remove());
+        registration.addCloseHandler(new CloseHandler<Registration>() {
+            public void handleClose(Registration closed, IOException exception) {
+                key.remove();
+            }
+        });
         return registration;
     }
 
@@ -513,15 +527,17 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
 
             public void handleDone(final Connection connection, final FutureResult<ConnectionPeerIdentity> attachment) {
-                worker.execute(() -> {
-                    try {
-                        // getPeerIdentityContext() might block and that's why we are running this asynchronously
-                        final ConnectionPeerIdentity identity = connection
-                                .getPeerIdentityContext()
-                                .authenticate(authenticationConfiguration);
-                        futureResult.setResult(identity);
-                    } catch (AuthenticationException e) {
-                        futureResult.setException(e);
+                worker.execute(new Runnable() {
+                    public void run() {
+                        try {
+                            // getPeerIdentityContext() might block and that's why we are running this asynchronously
+                            final ConnectionPeerIdentity identity = connection
+                                    .getPeerIdentityContext()
+                                    .authenticate(authenticationConfiguration);
+                            futureResult.setResult(identity);
+                        } catch (AuthenticationException e) {
+                            futureResult.setException(e);
+                        }
                     }
                 });
             }
@@ -631,9 +647,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         return true;
                     }
                 };
-                final Cancellable connect = doPrivileged((PrivilegedAction<Cancellable>) () ->
-                        connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, sslContext, finalFactoryOperator, Collections.emptyList())
-                );
+                final Cancellable connect = doPrivileged(new PrivilegedAction<Cancellable>() {
+                    public Cancellable run() {
+                        return connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, sslContext, finalFactoryOperator, Collections.emptyList());
+                    }
+                });
                 ok = true;
                 futureResult.addCancelHandler(connect);
                 return futureResult.getIoFuture();
@@ -699,9 +717,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         }
                     }
                 };
-                provider.addCloseHandler((closed, exception) -> {
-                    registration.closeAsync();
-                    closeTick1(closed);
+                provider.addCloseHandler(new CloseHandler<ConnectionProvider>() {
+                    public void handleClose(ConnectionProvider closed, IOException exception) {
+                        registration.closeAsync();
+                        closeTick1(closed);
+                    }
                 });
                 ok = true;
                 return registration;
@@ -970,11 +990,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 if (i == 0) {
                     executorUntick(this);
                 }
-                worker.execute(() -> {
-                    try {
-                        command.run();
-                    } finally {
-                        finishWork();
+                worker.execute(new Runnable() {
+                    public void run() {
+                        try {
+                            command.run();
+                        } finally {
+                            finishWork();
+                        }
                     }
                 });
                 ok = true;

@@ -147,7 +147,11 @@ public final class EndpointBuilder {
             sm.checkPermission(RemotingPermission.CREATE_ENDPOINT);
         }
         try {
-            return AccessController.doPrivileged((PrivilegedExceptionAction<Endpoint>) () -> EndpointImpl.construct(this));
+            return AccessController.doPrivileged(new PrivilegedExceptionAction<Endpoint>() {
+                public Endpoint run() throws IOException {
+                    return EndpointImpl.construct(EndpointBuilder.this);
+                }
+            });
         } catch (PrivilegedActionException e) {
             throw (IOException) e.getException();
         }

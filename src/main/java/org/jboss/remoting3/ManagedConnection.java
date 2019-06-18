@@ -32,6 +32,8 @@ import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 
+
+
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
@@ -46,7 +48,12 @@ final class ManagedConnection implements Connection {
         this.connectionInfo = connectionInfo;
         this.authConfig = authConfig;
         this.futureResult = futureResult;
-        delegate.addCloseHandler((c, e) -> connectionInfo.connectionClosed(authConfig, futureResult));
+        delegate.addCloseHandler(new CloseHandler<Connection>() {
+
+            public void handleClose(Connection closed, IOException exception) {
+                connectionInfo.connectionClosed(authConfig, futureResult);
+            }
+        });
     }
 
     public SocketAddress getLocalAddress() {

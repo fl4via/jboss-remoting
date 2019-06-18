@@ -85,7 +85,11 @@ final class UncloseableEndpoint implements Endpoint {
     }
 
     public Key addCloseHandler(final CloseHandler<? super Endpoint> handler) {
-        return endpoint.addCloseHandler((endpoint, ex) -> handler.handleClose(this, ex));
+        return endpoint.addCloseHandler(new CloseHandler<Endpoint>() {
+            public void handleClose(Endpoint closed, IOException exception) {
+                handler.handleClose(UncloseableEndpoint.this, exception);
+            }
+        });
     }
 
     public boolean isOpen() {

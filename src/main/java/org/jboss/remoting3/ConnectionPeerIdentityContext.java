@@ -106,20 +106,22 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
             return ioFuture;
         }
         final AtomicReference<Object> statRef = new AtomicReference<>(PENDING);
-        connection.getEndpoint().getExecutor().execute(() -> {
-            Object oldVal;
-            do {
-                oldVal = statRef.get();
-                if (oldVal == CANCELLED) {
-                    return;
+        connection.getEndpoint().getExecutor().execute(new Runnable() {
+            public void run() {
+                Object oldVal;
+                do {
+                    oldVal = statRef.get();
+                    if (oldVal == CANCELLED) {
+                        return;
+                    }
+                } while (! statRef.compareAndSet(PENDING, Thread.currentThread()));
+                try {
+                    futureResult.setResult(authenticate(configuration));
+                } catch (AuthenticationException e) {
+                    futureResult.setException(e);
                 }
-            } while (! statRef.compareAndSet(PENDING, Thread.currentThread()));
-            try {
-                futureResult.setResult(authenticate(configuration));
-            } catch (AuthenticationException e) {
-                futureResult.setException(e);
+                statRef.set(null);
             }
-            statRef.set(null);
         });
         futureResult.addCancelHandler(new Cancellable() {
             public Cancellable cancel() {

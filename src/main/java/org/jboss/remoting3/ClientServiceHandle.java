@@ -110,7 +110,12 @@ public final class ClientServiceHandle<T> {
                         // Optimize overall
                         attachments.replaceAttachment(key, futureResult.getIoFuture(), new FinishedIoFuture<T>(result));
                         // Remove on close
-                        channel.addCloseHandler((closed, exception) -> attachments.removeAttachment(key));
+                        channel.addCloseHandler(new CloseHandler<Channel>() {
+                            @Override public void handleClose(Channel closed,
+                                    IOException exception) {
+                                attachments.removeAttachment(key);
+                            }
+                        });
                     }
                 }, futureResult);
                 // make sure cancel requests now pass up to the service future

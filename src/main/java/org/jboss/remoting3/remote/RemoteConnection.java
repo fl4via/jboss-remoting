@@ -354,37 +354,39 @@ final class RemoteConnection {
         }
 
         public void send(final Pooled<ByteBuffer> pooled, final boolean close) {
-            connection.getIoThread().execute(() -> {
-                synchronized (queue) {
-                    XnioExecutor.Key heartKey1 = RemoteWriteListener.this.heartKey;
-                    if (heartKey1 != null) heartKey1.remove();
-                    if (closed) { pooled.free(); return; }
-                    if (close) { closed = true; }
-                    boolean free = true;
-                    try {
-                        final SaslWrapper wrapper = saslWrapper;
-                        if (wrapper != null) {
-                            final ByteBuffer buffer = pooled.getResource();
-                            final ByteBuffer source = buffer.duplicate();
-                            buffer.clear();
-                            wrapper.wrap(buffer, source);
-                            buffer.flip();
-                        }
-                        final boolean empty = queue.isEmpty();
-                        queue.add(pooled);
-                        free = false;
-                        if (empty) {
-                            connection.getSinkChannel().resumeWrites();
-                        }
-                    } catch (IOException e) {
-                        handleException(e, false);
-                        Pooled<ByteBuffer> unqueued;
-                        while ((unqueued = queue.poll()) != null) {
-                            unqueued.free();
-                        }
-                    } finally {
-                        if (free) {
-                            pooled.free();
+            connection.getIoThread().execute(new Runnable() {
+                public void run() {
+                    synchronized (queue) {
+                        XnioExecutor.Key heartKey1 = RemoteWriteListener.this.heartKey;
+                        if (heartKey1 != null) heartKey1.remove();
+                        if (closed) { pooled.free(); return; }
+                        if (close) { closed = true; }
+                        boolean free = true;
+                        try {
+                            final SaslWrapper wrapper = saslWrapper;
+                            if (wrapper != null) {
+                                final ByteBuffer buffer = pooled.getResource();
+                                final ByteBuffer source = buffer.duplicate();
+                                buffer.clear();
+                                wrapper.wrap(buffer, source);
+                                buffer.flip();
+                            }
+                            final boolean empty = queue.isEmpty();
+                            queue.add(pooled);
+                            free = false;
+                            if (empty) {
+                                connection.getSinkChannel().resumeWrites();
+                            }
+                        } catch (IOException e) {
+                            handleException(e, false);
+                            Pooled<ByteBuffer> unqueued;
+                            while ((unqueued = queue.poll()) != null) {
+                                unqueued.free();
+                            }
+                        } finally {
+                            if (free) {
+                                pooled.free();
+                            }
                         }
                     }
                 }

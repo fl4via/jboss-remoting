@@ -32,6 +32,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
@@ -279,7 +280,12 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                         SaslServer saslServer;
                         try {
                             saslServer = saslAuthenticationFactory.createMechanism(mechName, saslServerFactory -> {
-                                saslServerFactory = sslSession != null ? new SSLSaslServerFactory(saslServerFactory, () -> sslSession) : saslServerFactory;
+                                saslServerFactory = sslSession != null ?
+                                        new SSLSaslServerFactory(saslServerFactory, new Supplier<SSLSession>() {
+                                            @Override public SSLSession get() {
+                                                return sslSession;
+                                            }
+                                        }) : saslServerFactory;
                                 saslServerFactory = new ServerNameSaslServerFactory(saslServerFactory, serverName);
                                 saslServerFactory = new ProtocolSaslServerFactory(saslServerFactory, protocol);
                                 saslServerFactory = saslProperties != null ? new PropertiesSaslServerFactory(saslServerFactory, saslProperties) : saslServerFactory;

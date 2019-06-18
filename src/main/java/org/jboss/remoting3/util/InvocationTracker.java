@@ -27,6 +27,7 @@ import java.util.function.IntUnaryOperator;
 
 import org.jboss.remoting3.AbstractDelegatingMessageOutputStream;
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.RemotingOptions;
@@ -67,7 +68,11 @@ public final class InvocationTracker {
         Assert.checkNotNullParam("messageTracker", messageTracker);
         Assert.checkNotNullParam("intMasker", intMasker);
         this.messageTracker = messageTracker;
-        channel.addCloseHandler((closed, exception) -> connectionClosed(exception));
+        channel.addCloseHandler(new CloseHandler<Channel>() {
+            public void handleClose(Channel closed, IOException exception) {
+                connectionClosed(exception);
+            }
+        });
         this.intMasker = intMasker;
     }
 

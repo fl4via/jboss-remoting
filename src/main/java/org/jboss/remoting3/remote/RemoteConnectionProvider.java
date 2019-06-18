@@ -39,6 +39,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.security.sasl.SaslClientFactory;
 
+import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
@@ -375,7 +376,11 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                     handleAccepted(streamConnection, null, optionMap, saslAuthenticationFactory);
                 }, optionMap);
             }
-            addCloseHandler((closed, exception) -> safeClose(result));
+            addCloseHandler(new CloseHandler<ConnectionProvider>() {
+                public void handleClose(ConnectionProvider closed, IOException exception) {
+                    safeClose(result);
+                }
+            });
             result.resumeAccepts();
             return result;
         }

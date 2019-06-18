@@ -51,10 +51,16 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
 
     RemoteReadListener(final RemoteConnectionHandler handler, final RemoteConnection connection) {
         synchronized (connection.getLock()) {
-            connection.getConnection().getCloseSetter().set((ChannelListener<Channel>) channel -> connection.getExecutor().execute(() -> {
-                handler.handleConnectionClose();
-                handler.closeComplete();
-            }));
+            connection.getConnection().getCloseSetter().set(new ChannelListener<Channel>() {
+                public void handleEvent(Channel channel) {
+                    connection.getExecutor().execute(new Runnable() {
+                        public void run() {
+                            handler.handleConnectionClose();
+                            handler.closeComplete();
+                        }
+                    });
+                }
+            });
         }
         this.handler = handler;
         this.connection = connection;
