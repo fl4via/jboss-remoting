@@ -451,7 +451,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     IoFuture<ConnectionPeerIdentity> doGetConnection(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration authenticationConfiguration, final boolean connect) {
         Assert.checkNotNullParam("destination", destination);
         Assert.checkNotNullParam("authenticationConfiguration", authenticationConfiguration);
-
+        System.out.println("ENDPOINT DO GET CONNECTION " + destination + " - authenticationConfiguration " + authenticationConfiguration);
         final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
 
         /*

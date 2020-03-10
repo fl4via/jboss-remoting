@@ -256,6 +256,8 @@ final class ConnectionInfo {
 
         NotShared(final Map<AuthenticationConfiguration, FutureResult<Connection>> connections) {
             this.connections = connections;
+            for (Map.Entry<AuthenticationConfiguration, FutureResult<Connection>> entry: connections.entrySet())
+                System.out.println("NOT SHARED CREATED WITH " + entry.getKey() + " - " + entry.getValue());
         }
 
         IoFuture<Connection> getConnection(final EndpointImpl endpoint, final ConnectionKey key, final AuthenticationConfiguration authenticationConfiguration, boolean doConnect) {
@@ -276,7 +278,7 @@ final class ConnectionInfo {
                     final FutureResult<Connection> futureResult = new FutureResult<>();
                     splice(futureResult, attempt, authenticationConfiguration);
                     newConnections.put(authenticationConfiguration, futureResult);
-                    state = new NotShared(newConnections);
+                    //state = new NotShared(newConnections);
                     return attempt;
                 }
             }
