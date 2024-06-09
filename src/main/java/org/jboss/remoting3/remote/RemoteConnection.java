@@ -167,6 +167,7 @@ final class RemoteConnection {
     }
 
     void handlePreAuthCloseRequest() {
+        Messages.conn.tracef("HANDLING AUTH CLOSE REQUEST %s, CLOSE LISTENER IS %s, SINK CHANNEL CLOSE LISTENER IS %s", hashCode(), connection.getCloseListener(), connection.getSinkChannel().getCloseListener());
         try {
             terminateHeartbeat();
             synchronized (getLock()) {
@@ -274,6 +275,10 @@ final class RemoteConnection {
         public void handleEvent(final ConduitStreamSinkChannel channel) {
             final ByteBuffer[] cachedArray = this.cachedArray;
             synchronized (queue) {
+                if (closed && !channel.isOpen()) {
+                    Messages.conn.trace("Skipping write event because write listener is in closed state and channel is not open");
+                    return;
+                }
                 Pooled<ByteBuffer> pooled;
                 final Queue<Pooled<ByteBuffer>> queue = this.queue;
                 try {
